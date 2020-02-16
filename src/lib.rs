@@ -48,7 +48,6 @@
 // `#[derive(...)]` uses `trivial_numeric_casts` and `unused_qualifications`
 // internally.
 #![deny(
-    missing_docs,
     unstable_features, // Used by `internal_benches`
     unused_qualifications,
     variant_size_differences,
@@ -67,6 +66,8 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+
+extern crate std;
 
 #[macro_use]
 mod debug;
@@ -93,9 +94,9 @@ pub mod constant_time;
 
 pub mod io;
 
-mod cpu;
+pub mod cpu;
 pub mod digest;
-mod ec;
+pub mod ec;
 mod endian;
 pub mod error;
 pub mod hkdf;

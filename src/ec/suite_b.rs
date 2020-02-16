@@ -14,9 +14,10 @@
 
 //! Elliptic curve operations on P-256 & P-384.
 
-use self::ops::*;
-use crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, limb::LimbMask, pkcs8};
-use untrusted;
+pub use self::ops::*;
+use crate::{arithmetic::montgomery::*, error, io::der, limb::LimbMask, pkcs8};
+pub use crate::{cpu, ec};
+pub use untrusted;
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
 // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed modulo
@@ -228,11 +229,13 @@ pub(crate) fn key_pair_from_bytes(
     Ok(r)
 }
 
+pub use super::PublicKey;
+
 pub mod curve;
 pub mod ecdh;
 pub mod ecdsa;
 
-mod ops;
+pub mod ops;
 
 mod private_key;
-mod public_key;
+pub mod public_key;
