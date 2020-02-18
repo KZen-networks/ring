@@ -237,5 +237,5 @@ pub mod ecdsa;
 
 pub mod ops;
 
-mod private_key;
+pub mod private_key;
 pub mod public_key;
