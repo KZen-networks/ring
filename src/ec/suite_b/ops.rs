@@ -34,6 +34,7 @@ pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
 #[derive(Clone, Copy)]
 pub enum N {}
 
+#[derive(Debug)]
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
     // `ops.num_limbs` elements are the X coordinate, the next

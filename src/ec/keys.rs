@@ -1,8 +1,8 @@
 use super::{Curve, ELEM_MAX_BYTES, SEED_MAX_BYTES};
 use crate::{cpu, error, rand};
-use crate::ec::suite_b::{PrivateKeyOps, PublicKeyOps};
+use crate::ec::suite_b::{PrivateKeyOps, PublicKeyOps, Point};
 use crate::ec::suite_b::public_key::parse_uncompressed_point;
-use crate::ec::suite_b::private_key::{private_key_as_scalar, big_endian_affine_from_jacobian};
+use crate::ec::suite_b::private_key::{big_endian_affine_from_jacobian, scalar_from_big_endian_bytes};
 use std::fmt;
 use hex_slice::AsHex;
 use std::println;
@@ -128,45 +128,45 @@ impl PublicKey {
     }
 
     pub fn serialize_uncompressed(&self) -> [u8; PUBLIC_KEY_MAX_LEN] {
-        self.bytes.clone()
+        self.bytes
     }
 
-    pub fn scalar_mul(&self, seed: &Seed, priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps) -> Result<Self, error::Unspecified> {
-        println!("----  scalar_mul  ----");
-//        // This loop prints: 0 1 2
-//        for x in self.bytes.iter() {
-//            print!("{:02x} ", x);
-//        }
-        let public_key = parse_uncompressed_point(pub_ops, untrusted::Input::from(&self.bytes[..self.len]))?;
-        println!("#1");
-        let scalar = private_key_as_scalar(priv_ops, seed);
-        println!("#2");
-        let point = priv_ops.point_mul(&scalar, &public_key);
-        println!("#3");
+    pub fn add_point(&self, curve: &'static Curve, other: &PublicKey, priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps) -> Result<Self, error::Unspecified> {
+        let self_point = self.to_point(curve, priv_ops, pub_ops)?;
+        let other_point = other.to_point(curve, priv_ops, pub_ops)?;
+        let sum_point = pub_ops.common.point_sum(&self_point, &other_point);
+        Self::from_point(curve, priv_ops, &sum_point, self.len)
+    }
 
-        let elem_len = (self.len - 1) / 2;
-        println!("#4");
+    fn to_point(&self, curve: &'static Curve, priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps) -> Result<Point, error::Unspecified> {
+        // we're multiplying self by the scalar 1, to get a jacobian encoded Point
+        let elems = parse_uncompressed_point(pub_ops, untrusted::Input::from(&self.bytes[..self.len]))?;
+        let mut one_vec = vec![1u8];
+        let mut template = vec![0; curve.elem_scalar_seed_len - 1];
+        template.extend_from_slice(&one_vec);
+        one_vec = template;
+
+        let one_scalar = scalar_from_big_endian_bytes(priv_ops, &one_vec.as_slice())?;
+
+        Ok(priv_ops.point_mul(&one_scalar, &elems))
+    }
+
+    fn from_point(curve: &'static Curve, ops: &PrivateKeyOps, point: &Point, bytes_len: usize) -> Result<Self, error::Unspecified> {
+        println!("form_point. bytes_len = {}", bytes_len);
+        let elem_len = curve.elem_scalar_seed_len;
         let mut public_out_vec = vec![0u8; elem_len * 2];
-        println!("#5");
         let mut public_out: &mut [u8] = public_out_vec.as_mut();
-        println!("#6");
         let (x_out, y_out) = (&mut public_out).split_at_mut(elem_len);
-        println!("#7");
-        big_endian_affine_from_jacobian(priv_ops, Some(x_out), Some(y_out), &point)?;
+        big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out), &point)?;
 
-        println!("#8");
         let mut bytes = [0u8; PUBLIC_KEY_MAX_LEN];
-        println!("#9");
         bytes[0] = 4;  // Uncompressed encoding
-        println!("#10");
         bytes[1..(elem_len + 1)].clone_from_slice(&public_out[0..elem_len]);
-        println!("#11");
-        bytes[(elem_len + 1)..self.len].clone_from_slice(&public_out[elem_len..(2 * elem_len)]);
-        println!("#12");
+        bytes[(elem_len + 1)..bytes_len].clone_from_slice(&public_out[elem_len..(2 * elem_len)]);
 
         Ok(PublicKey {
             bytes,
-            len: self.len,
+            len: bytes_len,
         })
     }
 }

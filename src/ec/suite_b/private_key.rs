@@ -152,23 +152,30 @@ pub fn affine_from_jacobian(
     ops: &PrivateKeyOps,
     p: &Point,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
+    println!("affine_from_jacobian #1");
     let z = ops.common.point_z(p);
 
     // Since we restrict our private key to the range [1, n), the curve has
     // prime order, and we verify that the peer's point is on the curve,
     // there's no way that the result can be at infinity. But, use `assert!`
     // instead of `debug_assert!` anyway
+    println!("affine_from_jacobian #2");
     assert!(ops.common.elem_verify_is_not_zero(&z).is_ok());
 
+    println!("affine_from_jacobian #3");
     let x = ops.common.point_x(p);
+    println!("affine_from_jacobian #4");
     let y = ops.common.point_y(p);
 
+    println!("affine_from_jacobian #5");
     let zz_inv = ops.elem_inverse_squared(&z);
 
+    println!("affine_from_jacobian #6");
     let x_aff = ops.common.elem_product(&x, &zz_inv);
 
     // `y_aff` is needed to validate the point is on the curve. It is also
     // needed in the non-ECDH case where we need to output it.
+    println!("affine_from_jacobian #7");
     let y_aff = {
         let zzzz_inv = ops.common.elem_squared(&zz_inv);
         let zzz_inv = ops.common.elem_product(&z, &zzzz_inv);
@@ -178,8 +185,10 @@ pub fn affine_from_jacobian(
     // If we validated our inputs correctly and then computed (x, y, z), then
     // (x, y, z) will be on the curve. See
     // `verify_affine_point_is_on_the_curve_scaled` for the motivation.
+    println!("affine_from_jacobian #8");
     verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff))?;
 
+    println!("affine_from_jacobian #9");
     Ok((x_aff, y_aff))
 }
 
@@ -189,12 +198,16 @@ pub fn big_endian_affine_from_jacobian(
     y_out: Option<&mut [u8]>,
     p: &Point,
 ) -> Result<(), error::Unspecified> {
+    println!("big_endian_affine_from_jacobian #1");
     let (x_aff, y_aff) = affine_from_jacobian(ops, p)?;
+    println!("big_endian_affine_from_jacobian #2");
     let num_limbs = ops.common.num_limbs;
+    println!("big_endian_affine_from_jacobian #3");
     if let Some(x_out) = x_out {
         let x = ops.common.elem_unencoded(&x_aff);
         limb::big_endian_from_limbs(&x.limbs[..num_limbs], x_out);
     }
+    println!("big_endian_affine_from_jacobian #4");
     if let Some(y_out) = y_out {
         let y = ops.common.elem_unencoded(&y_aff);
         limb::big_endian_from_limbs(&y.limbs[..num_limbs], y_out);
