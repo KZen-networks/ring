@@ -43,12 +43,10 @@ impl Seed {
     }
 
     pub fn is_zero(&self, ops: &CommonOps) -> bool {
-        println!("is_zero #1");
         let elem = elem_parse_big_endian_fixed_consttime(
             ops,
             untrusted::Input::from(self.bytes_less_safe()))
             .unwrap();
-        println!("is_zero #3");
         ops.is_zero(&elem)
     }
 }
@@ -101,23 +99,17 @@ impl Seed {
         bytes: untrusted::Input,
         cpu_features: cpu::Features,
     ) -> Result<Seed, error::Unspecified> {
-        println!("from_bytes #1");
         let bytes = bytes.as_slice_less_safe();
-        println!("from_bytes #2");
         if curve.elem_scalar_seed_len != bytes.len() {
             return Err(error::Unspecified);
         }
-        println!("from_bytes #3");
         (curve.check_private_key_bytes)(bytes)?;
-        println!("from_bytes #4");
         let mut r = Self {
             bytes: [0; SEED_MAX_BYTES],
             curve,
             cpu_features,
         };
-        println!("from_bytes #5");
         r.bytes[..r.curve.elem_scalar_seed_len].copy_from_slice(bytes);
-        println!("from_bytes #6");
         Ok(r)
     }
 
@@ -126,10 +118,8 @@ impl Seed {
     }
 
     pub fn compute_public_key_incl_zero(&self, ops: &CommonOps) -> Result<PublicKey, error::Unspecified> {
-        println!("compute_public_key_incl_zero #1");
         // TODO make constant time
         if Seed::is_zero(self, ops) {
-            println!("is_zero");
             let mut bytes = [0; PUBLIC_KEY_MAX_LEN];
             bytes[0] = 4u8; // uncompresssed encoding
             return Ok(PublicKey {
@@ -137,20 +127,16 @@ impl Seed {
                 len: self.curve.public_key_len,
             })
         }
-        println!("compute_public_key_incl_zero #2");
 
         self.compute_public_key()
     }
 
     pub fn compute_public_key(&self) -> Result<PublicKey, error::Unspecified> {
-        println!("compute_public_key #1");
         let mut public_key = PublicKey {
             bytes: [0u8; PUBLIC_KEY_MAX_LEN],
             len: self.curve.public_key_len,
         };
-        println!("compute_public_key #2");
         (self.curve.public_from_private)(&mut public_key.bytes[..public_key.len], self)?;
-        println!("compute_public_key #3");
         Ok(public_key)
     }
 }
@@ -252,7 +238,6 @@ impl PublicKey {
     }
 
     pub fn scalar_mul(&self, seed: &Seed, priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps) -> Result<Self, error::Unspecified> {
-        println!("----  scalar_mul  ----");
         match parse_uncompressed_point(pub_ops, untrusted::Input::from(&self.bytes[..self.len])) {
             Err(error) => {
                 if self.is_point_at_infinity() {
@@ -262,35 +247,23 @@ impl PublicKey {
                 }
             },
             Ok(public_key) => {
-                println!("#1");
                 // TODO consider constant time
                 if seed.is_zero(priv_ops.common) {
                     return Self::point_at_infinity(self.len);
                 }
                 let scalar = private_key_as_scalar(priv_ops, seed);
-                println!("#2");
                 let point = priv_ops.point_mul(&scalar, &public_key);
-                println!("#3");
 
                 let elem_len = (self.len - 1) / 2;
-                println!("#4");
                 let mut public_out_vec = vec![0u8; elem_len * 2];
-                println!("#5");
                 let mut public_out: &mut [u8] = public_out_vec.as_mut();
-                println!("#6");
                 let (x_out, y_out) = (&mut public_out).split_at_mut(elem_len);
-                println!("#7");
                 big_endian_affine_from_jacobian(priv_ops, Some(x_out), Some(y_out), &point)?;
 
-                println!("#8");
                 let mut bytes = [0u8; PUBLIC_KEY_MAX_LEN];
-                println!("#9");
                 bytes[0] = 4;  // Uncompressed encoding
-                println!("#10");
                 bytes[1..(elem_len + 1)].clone_from_slice(&public_out[0..elem_len]);
-                println!("#11");
                 bytes[(elem_len + 1)..self.len].clone_from_slice(&public_out[elem_len..(2 * elem_len)]);
-                println!("#12");
 
                 Ok(PublicKey {
                     bytes,
@@ -308,12 +281,6 @@ impl PublicKey {
     }
 
     fn to_point(&self, curve: &'static Curve, priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps) -> Result<Point, error::Unspecified> {
-        // we're multiplying self by the scalar 1, to get a jacobian encoded Point
-        println!("to_point #1, self.len = {}", self.len);
-        for i in 0..self.len {
-            print!("{:02x} ", self.bytes[i]);
-        }
-
         match parse_uncompressed_point(pub_ops, untrusted::Input::from(&self.bytes[..self.len])) {
             Err(e) => {
                 if self.is_point_at_infinity() {
@@ -323,13 +290,10 @@ impl PublicKey {
                 }
             },
             Ok(elems) => {
-                println!("to_point #2");
+                // we're multiplying self by the scalar 1, to get a jacobian encoded Point
                 let mut one_vec = vec![1u8];  // TODO: make a constant
-                println!("to_point #3");
                 let mut template = vec![0; curve.elem_scalar_seed_len - 1];
-                println!("to_point #4");
                 template.extend_from_slice(&one_vec);
-                println!("to_point #5");
                 one_vec = template;
 
                 let one_scalar = scalar_from_big_endian_bytes(priv_ops, &one_vec.as_slice())?;
@@ -340,7 +304,6 @@ impl PublicKey {
     }
 
     fn from_point(curve: &'static Curve, ops: &PrivateKeyOps, point: &Point, bytes_len: usize) -> Result<Self, error::Unspecified> {
-        println!("form_point. bytes_len = {}", bytes_len);
         let elem_len = curve.elem_scalar_seed_len;
         let mut public_out_vec = vec![0u8; elem_len * 2];
         let mut public_out: &mut [u8] = public_out_vec.as_mut();
