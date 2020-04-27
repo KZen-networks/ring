@@ -20,7 +20,7 @@ use core::marker::PhantomData;
 
 /// Elements of ℤ/mℤ for some modulus *m*. Elements are always fully reduced
 /// with respect to *m*; i.e. the 0 <= x < m for every value x.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Elem<M, E: Encoding> {
     // XXX: pub
     pub limbs: [Limb; MAX_LIMBS],

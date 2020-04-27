@@ -20,10 +20,10 @@
 ///
 /// This is a zero-sized type so that it can be "stored" wherever convenient.
 #[derive(Copy, Clone)]
-pub(crate) struct Features(());
+pub struct Features(());
 
 #[inline(always)]
-pub(crate) fn features() -> Features {
+pub fn features() -> Features {
     // We don't do runtime feature detection on iOS. instead some features are
     // assumed to be present; see `arm::Feature`.
     #[cfg(all(
